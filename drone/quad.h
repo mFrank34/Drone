@@ -3,10 +3,10 @@
 
 enum Corner : uint8_t
 {
-    MOTOR_FL = 0,
-    MOTOR_FR = 1,
-    MOTOR_BL = 2,
-    MOTOR_BR = 3,
+    CORNER_FL = 0,
+    CORNER_FR = 1,
+    CORNER_BL = 2,
+    CORNER_BR = 3,
     CORNER_COUNT = 4
 };
 

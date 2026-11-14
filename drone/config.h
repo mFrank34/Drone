@@ -32,10 +32,18 @@ namespace cfg
     constexpr float MAX_TILT = 60.0f; // degrees
 
     /* Stablizers */
-    constexpr float KP = 0.02f;
+    constexpr float KP = 0.01f;
     constexpr float KD = 0.004f;
     constexpr float ALPHA = 0.98f;
     constexpr float GYRO_SMOOTH = 0.6f;
+
+    /* Stabiliser Pushes Back  */
+    constexpr float ROLL_SIGN = 1.0f;
+    constexpr float PITCH_SIGN = 1.0f;
+    constexpr float KP_TEST = 0.02f; // reuse KP/KD from before if you prefer
+    constexpr float KD_TEST = 0.004f;
+
+    constexpr uint32_t LOOP_MS = 2; // 500 Hz
 
     /* Pin check for making sure pins are unique before compiling */
     constexpr bool pinsUnique()
