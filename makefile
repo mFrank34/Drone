@@ -1,18 +1,15 @@
-SKETCH ?= drone
-FQBN   ?= esp32:esp32:esp32s3:CDCOnBoot=cdc
-PORT   ?= /dev/ttyACM0
-BAUD   ?= 115200
-
-.PHONY: build upload flash monitor
+.PHONY: build upload monitor clean
 
 build:
-	arduino-cli compile --fqbn $(FQBN) $(SKETCH)
+	pio run
 
 upload:
-	arduino-cli upload -p $(PORT) --fqbn $(FQBN) $(SKETCH)
+	pio run -t upload
 
-# build + upload in one go
-flash: build upload
+flash: upload
 
 monitor:
-	arduino-cli monitor -p $(PORT) -c baudrate=$(BAUD)
+	pio device monitor
+
+clean:
+	pio run -t clean
