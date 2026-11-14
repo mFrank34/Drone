@@ -1,15 +1,17 @@
-.PHONY: build upload monitor clean
+SKETCH ?= src
+FQBN   ?= esp32:esp32:esp32s3:CDCOnBoot=cdc
+PORT   ?= /dev/ttyACM0
+BAUD   ?= 115200
+
+.PHONY: build upload flash monitor
 
 build:
-	pio run
+	arduino-cli compile --fqbn $(FQBN) $(SKETCH)
 
 upload:
-	pio run -t upload
+	arduino-cli upload -p $(PORT) --fqbn $(FQBN) $(SKETCH)
 
-flash: upload
+flash: build upload
 
 monitor:
-	pio device monitor
-
-clean:
-	pio run -t clean
+	arduino-cli monitor -p $(PORT) -c baudrate=$(BAUD)
