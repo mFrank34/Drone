@@ -15,13 +15,15 @@ namespace cfg
     constexpr uint8_t SDA_PIN = 12;
     constexpr uint8_t SCL_PIN = 13;
     constexpr uint8_t MPU_ADDR = 0x68;
+    constexpr float GX_SIGN = 1.0f;
+    constexpr float GY_SIGN = 1.0f;
 
     /* status LED */
     constexpr uint8_t LED_PIN = 21;
 
     /* motor config*/
     constexpr uint32_t PWM_FREQ = 20000;
-    constexpr uint8_t PWM_BITS = 11; // 2048 steps at 20 kHz
+    constexpr uint8_t PWM_BITS = 10; // 1024 steps at 20 kHz
     constexpr float MAX_OUT = 1.0f;
     constexpr float SLEW = 1.0f; // throttle change per second
 
