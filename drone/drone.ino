@@ -2,10 +2,56 @@
 #include "imu.h"
 #include "quad.h"
 #include "shared.h"
-#include "web.h"
+#include "mavlink_comm.h"
 
 Imu imu;
 Quad quad;
+
+// Integral of tilt error (deg*s). Only runs while flying with the stabiliser on.
+static float iRoll = 0, iPitch = 0;
+
+static void resetIntegral() { iRoll = iPitch = 0; }
+
+// Fills outs[] for one control step. base = slewed throttle (0..1).
+static void mix(float base, float dt, bool imuOk, float outs[CORNER_COUNT])
+{
+  for (uint8_t i = 0; i < CORNER_COUNT; i++)
+    outs[i] = 0;
+
+  const uint8_t sel = cmd.sel; // 0 = ALL, 1..4 = FL FR BL BR
+  const bool flying = quad.isArmed() && base > 0.02f;
+  const bool stabilise = flying && sel == 0 && cmd.stab && imuOk;
+
+  if (!stabilise)
+    resetIntegral(); // no stale integral when it starts stabilising again
+
+  if (!flying)
+    return;
+
+  if (stabilise)
+  {
+    const float lim = cfg::I_LIMIT / cfg::KI; // anti-windup clamp
+    iRoll = constrain(iRoll + imu.roll * dt, -lim, lim);
+    iPitch = constrain(iPitch + imu.pitch * dt, -lim, lim);
+
+    const float r = cfg::ROLL_SIGN * (cfg::KP * imu.roll + cfg::KD * imu.gxf + cfg::KI * iRoll);
+    const float p = cfg::PITCH_SIGN * (cfg::KP * imu.pitch + cfg::KD * imu.gyf + cfg::KI * iPitch);
+
+    outs[CORNER_FL] = base - r + p;
+    outs[CORNER_FR] = base + r + p;
+    outs[CORNER_BL] = base - r - p;
+    outs[CORNER_BR] = base + r - p;
+  }
+  else if (sel == 0)
+  {
+    for (uint8_t i = 0; i < CORNER_COUNT; i++)
+      outs[i] = base; // all motors equal, no stabiliser
+  }
+  else
+  {
+    outs[sel - 1] = base; // single-motor test
+  }
+}
 
 static void controlTask(void *)
 {
@@ -17,67 +63,58 @@ static void controlTask(void *)
   for (;;)
   {
     vTaskDelayUntil(&wake, pdMS_TO_TICKS(cfg::LOOP_MS));
-    uint32_t start = micros();
-    uint32_t period = start - lastStart;
-    float dt = fminf(period * 1e-6f, 0.05f);
+    const uint32_t start = micros();
+    const uint32_t period = start - lastStart;
+    const float dt = fminf(period * 1e-6f, 0.05f);
     lastStart = start;
     if (iters > 0 && period > periodMax)
       periodMax = period;
 
     // ---- commands and failsafes ----
     if (cmd.stop.exchange(false))
+    {
       quad.cut("STOP");
+      resetIntegral();
+    }
     if (cmd.arm.exchange(false) && !quad.isArmed())
     {
       quad.arm();
+      resetIntegral();
       cmd.lastSeenMs = millis(); // start the link timer fresh
     }
     if (quad.isArmed() && millis() - cmd.lastSeenMs > cfg::FAILSAFE_MS)
+    {
       quad.cut("link lost");
+      resetIntegral();
+    }
 
     // ---- sensing ----
-    bool imuOk = imu.update(dt);
+    const bool imuOk = imu.update(dt);
     if (!imuOk)
     {
       errs++;
       if (quad.isArmed() && cmd.stab)
+      {
         quad.cut("sensor error");
+        resetIntegral();
+      }
     }
     if (quad.isArmed() && cmd.stab &&
         (fabsf(imu.roll) > cfg::MAX_TILT || fabsf(imu.pitch) > cfg::MAX_TILT))
+    {
       quad.cut("tilt cutoff");
+      resetIntegral();
+    }
 
-    // ---- throttle and mixer ----
+    // ---- throttle, mixer, motors ----
     quad.setTarget(cmd.thr);
     quad.updateSlew(dt);
-    float base = quad.throttle();
-    float outs[CORNER_COUNT] = {0, 0, 0, 0};
-    uint8_t sel = cmd.sel;
 
-    if (quad.isArmed() && base > 0.02f)
-    {
-      if (sel == 0 && cmd.stab && imuOk)
-      {
-        float r = cfg::ROLL_SIGN * (cfg::KP * imu.roll + cfg::KD * imu.gxf);
-        float p = cfg::PITCH_SIGN * (cfg::KP * imu.pitch + cfg::KD * imu.gyf);
-        outs[CORNER_FL] = base - r + p;
-        outs[CORNER_FR] = base + r + p;
-        outs[CORNER_BL] = base - r - p;
-        outs[CORNER_BR] = base + r - p;
-      }
-      else if (sel == 0)
-      {
-        for (auto &o : outs)
-          o = base;
-      }
-      else
-      {
-        outs[sel - 1] = base; // 1..4 = FL FR BL BR
-      }
-    }
-    quad.write(outs);
+    float outs[CORNER_COUNT];
+    mix(quad.throttle(), dt, imuOk, outs);
+    quad.write(outs); // forces zero if disarmed
 
-    uint32_t work = micros() - start;
+    const uint32_t work = micros() - start;
     if (work > workMax)
       workMax = work;
     iters++;
@@ -111,16 +148,15 @@ void setup()
   Serial.begin(115200);
   delay(500);
   quad.begin(); // gates low, disarmed
+  mavBegin();   // BLE + MAVLink first, so you can always reach the drone
+
   Serial.println("calibrating, keep flat and still...");
-  if (!imu.begin())
-  {
-    Serial.println("IMU failed");
-    while (true)
-      delay(1000);
-  }
+  bool imuOk = imu.begin();
+  if (!imuOk)
+    Serial.println("IMU failed - stabiliser unavailable");
+
   cmd.lastSeenMs = millis();
   xTaskCreatePinnedToCore(controlTask, "control", 4096, nullptr, 20, nullptr, 1);
-  webBegin();
   Serial.println("ready (motors disarmed)");
 }
 
@@ -134,4 +170,4 @@ void loop()
                 t.armed, t.fault, t.roll, t.pitch,
                 (unsigned long)t.rate, (unsigned long)t.periodMaxUs);
   delay(1000);
-} 
+}

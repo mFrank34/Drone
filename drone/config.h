@@ -3,13 +3,25 @@
 #pragma once
 #include <stdint.h>
 
+#pragma once
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// MAVLink identity
+#define SYSTEM_ID 1
+#define COMPONENT_ID 1 // MAV_COMP_ID_AUTOPILOT1
+
+// Bluetooth LE name the controller app will see
+#define BLE_DEVICE_NAME "Drone"
+
 namespace cfg
 {
     /* Motor Pins*/
     constexpr uint8_t MOTOR_FL = 3; // GPIO3 is a strapping pin on the S3
-    constexpr uint8_t MOTOR_FR = 11;
+    constexpr uint8_t MOTOR_FR = 8; // 8
     constexpr uint8_t MOTOR_BL = 6;
-    constexpr uint8_t MOTOR_BR = 8;
+    constexpr uint8_t MOTOR_BR = 11; // 11
 
     /* IC2 MTU Sensor */
     constexpr uint8_t SDA_PIN = 12;
@@ -31,9 +43,11 @@ namespace cfg
     constexpr uint32_t FAILSAFE_MS = 1000;
     constexpr float MAX_TILT = 60.0f; // degrees
 
-    /* Stablizers */
+    /* Stabiliser gains */
     constexpr float KP = 0.01f;
-    constexpr float KD = 0.004f;
+    constexpr float KD = 0.002f;
+    constexpr float KI = 0.02f;
+    constexpr float I_LIMIT = 0.10f; // max correction the I term can add
     constexpr float ALPHA = 0.98f;
     constexpr float GYRO_SMOOTH = 0.6f;
 
@@ -44,6 +58,13 @@ namespace cfg
     constexpr float KD_TEST = 0.004f;
 
     constexpr uint32_t LOOP_MS = 2; // 500 Hz
+
+    /* MAVLink / BLE controller input */
+    constexpr float MAV_THR_CAP = 0.5f;    // full stick = this fraction of throttle (old web slider stopped at 50%)
+    constexpr int MAV_Z_MIN = 0;           // MANUAL_CONTROL.z at zero throttle: 0 for apps sending 0..1000, -1000 for apps sending -1000..1000
+    constexpr float ARM_MAX_THR = 0.05f;   // refuse to arm if the stick throttle is above this
+    constexpr uint32_t ARM_INPUT_MS = 500; // ...or if no stick input arrived within this long
+    constexpr uint32_t BLE_PASSKEY = 0;    // 0 = open link; 1..999999 = central must pair with this passkey
 
     /* Pin check for making sure pins are unique before compiling */
     constexpr bool pinsUnique()
@@ -57,3 +78,5 @@ namespace cfg
     }
     static_assert(pinsUnique(), "pin conflict!");
 }
+
+#endif

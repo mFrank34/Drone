@@ -7,8 +7,8 @@ struct Cmd
 {
     std::atomic<bool> stop{false}, arm{false}, stab{false};
     std::atomic<float> thr{0.0f};
-    std::atomic<uint8_t> sel{0};         // 0 = ALL, 1..4 = FL FR BL BR
-    std::atomic<uint32_t> lastSeenMs{0}; // any web request refreshes this
+    std::atomic<uint8_t> sel{0};        
+    std::atomic<uint32_t> lastSeenMs{0}; 
 };
 
 struct Telemetry
