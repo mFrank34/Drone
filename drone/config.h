@@ -26,7 +26,7 @@ namespace cfg
     /* IC2 MTU Sensor */
     constexpr uint8_t SDA_PIN = 12;
     constexpr uint8_t SCL_PIN = 13;
-    constexpr uint8_t MPU_ADDR = 0x68;
+    constexpr uint8_t MPU_ADDR = 0x6B;
     constexpr float GX_SIGN = 1.0f;
     constexpr float GY_SIGN = 1.0f;
 
