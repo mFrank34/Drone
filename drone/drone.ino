@@ -2,7 +2,6 @@
 #include "imu.h"
 #include "quad.h"
 #include "shared.h"
-#include "mavlink_comm.h"
 
 Imu imu;
 Quad quad;
@@ -143,12 +142,60 @@ static void controlTask(void *)
   }
 }
 
+// ---- USB serial commands (replaces the MAVLink/BLE link) ----
+// a = arm, s = stop, b = toggle stabiliser, m<0-4> = motor select,
+// t<0-100> = throttle %. Any valid command refreshes the failsafe timer.
+static void handleSerial()
+{
+  static char buf[16];
+  static uint8_t n = 0;
+
+  while (Serial.available())
+  {
+    char c = Serial.read();
+    if (c != '\n' && c != '\r')
+    {
+      if (n < sizeof(buf) - 1)
+        buf[n++] = c;
+      continue;
+    }
+    if (n == 0)
+      continue;
+    buf[n] = 0;
+    n = 0;
+
+    switch (buf[0])
+    {
+    case 'a':
+      cmd.arm = true;
+      break;
+    case 's':
+      cmd.stop = true;
+      cmd.thr = 0;
+      break;
+    case 'b':
+      cmd.stab = !cmd.stab;
+      Serial.printf("stab %d\n", (int)cmd.stab);
+      break;
+    case 'm':
+      cmd.sel = constrain(atoi(buf + 1), 0, 4);
+      break;
+    case 't':
+      cmd.thr = constrain(atoi(buf + 1), 0, 100) / 100.0f;
+      break;
+    default:
+      Serial.println("?");
+      continue;
+    }
+    cmd.lastSeenMs = millis(); // any valid command counts as "link alive"
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
   delay(500);
   quad.begin(); // gates low, disarmed
-  mavBegin();   // BLE + MAVLink first, so you can always reach the drone
 
   Serial.println("calibrating, keep flat and still...");
   bool imuOk = imu.begin();
@@ -158,16 +205,24 @@ void setup()
   cmd.lastSeenMs = millis();
   xTaskCreatePinnedToCore(controlTask, "control", 4096, nullptr, 20, nullptr, 1);
   Serial.println("ready (motors disarmed)");
+  Serial.println("cmds: a=arm  s=stop  b=stab on/off  m<0-4>=motor  t<0-100>=throttle %");
 }
 
 void loop()
 {
-  Telemetry t;
-  portENTER_CRITICAL(&teleMux);
-  t = tele;
-  portEXIT_CRITICAL(&teleMux);
-  Serial.printf("armed %d %s | roll %.1f pitch %.1f | rate %lu period max %lu us\n",
-                t.armed, t.fault, t.roll, t.pitch,
-                (unsigned long)t.rate, (unsigned long)t.periodMaxUs);
-  delay(1000);
+  static uint32_t lastPrint = 0;
+  handleSerial();
+
+  if (millis() - lastPrint >= 1000)
+  {
+    lastPrint = millis();
+    Telemetry t;
+    portENTER_CRITICAL(&teleMux);
+    t = tele;
+    portEXIT_CRITICAL(&teleMux);
+    Serial.printf("armed %d %s | roll %.1f pitch %.1f | rate %lu period max %lu us\n",
+                  t.armed, t.fault, t.roll, t.pitch,
+                  (unsigned long)t.rate, (unsigned long)t.periodMaxUs);
+  }
+  delay(5);
 }
