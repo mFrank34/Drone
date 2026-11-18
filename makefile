@@ -1,5 +1,5 @@
 SKETCH ?= drone
-FQBN   ?= esp32:esp32:esp32s3:CDCOnBoot=cdc
+FQBN    = esp32-bluepad32:esp32:esp32s3:CDCOnBoot=cdc
 PORT   ?= /dev/ttyACM0
 BAUD   ?= 115200
 

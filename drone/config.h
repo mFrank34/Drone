@@ -67,16 +67,17 @@ namespace cfg
     constexpr uint32_t BLE_PASSKEY = 0;    // 0 = open link; 1..999999 = central must pair with this passkey
 
     /* Pin check for making sure pins are unique before compiling */
-    constexpr bool pinsUnique()
-    {
-        const uint8_t p[] = {MOTOR_FL, MOTOR_FR, MOTOR_BL, MOTOR_BR, SDA_PIN, SCL_PIN, LED_PIN};
-        for (unsigned i = 0; i < sizeof(p); i++)
-            for (unsigned j = i + 1; j < sizeof(p); j++)
-                if (p[i] == p[j])
-                    return false;
-        return true;
-    }
-    static_assert(pinsUnique(), "pin conflict!");
+    static_assert(
+        MOTOR_FL != MOTOR_FR && MOTOR_FL != MOTOR_BL && MOTOR_FL != MOTOR_BR &&
+            MOTOR_FL != SDA_PIN && MOTOR_FL != SCL_PIN && MOTOR_FL != LED_PIN &&
+            MOTOR_FR != MOTOR_BL && MOTOR_FR != MOTOR_BR &&
+            MOTOR_FR != SDA_PIN && MOTOR_FR != SCL_PIN && MOTOR_FR != LED_PIN &&
+            MOTOR_BL != MOTOR_BR &&
+            MOTOR_BL != SDA_PIN && MOTOR_BL != SCL_PIN && MOTOR_BL != LED_PIN &&
+            MOTOR_BR != SDA_PIN && MOTOR_BR != SCL_PIN && MOTOR_BR != LED_PIN &&
+            SDA_PIN != SCL_PIN && SDA_PIN != LED_PIN &&
+            SCL_PIN != LED_PIN,
+        "pin conflict!");
 }
 
 #endif

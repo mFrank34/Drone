@@ -17,5 +17,6 @@ public:
 
 private:
     uint8_t _pin;
+    uint8_t _channel = 0;
     float _last = 0.0f;
 };
