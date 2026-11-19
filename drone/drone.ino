@@ -1,35 +1,34 @@
 #include <Arduino.h>
+#include "imu.h"
+#include "quad.h"
+#include "shared.h"
+#include "flightloop.h"
+#include "commands.h"
+#include "status.h"
 
-#include "gamepad.h"
-
-drone::Gamepad pad;
+Imu imu;
+Quad quad;
+FlightLoop flight(imu, quad);
+Commands serialCmds;
 
 void setup()
 {
     Serial.begin(115200);
-    delay(1500); // let USB CDC reconnect so you don't miss the banner
-    BP32.enableNewBluetoothConnections(true);
-    BP32.forgetBluetoothKeys();
-    Serial.println("Booted, waiting for controller...");
-    pad.begin();
+    delay(500);
+    quad.begin(); // gates low, disarmed
+
+    Serial.println("calibrating, keep flat and still...");
+    if (!imu.begin())
+        Serial.println("IMU failed - stabiliser unavailable");
+
+    flight.start();
+    Serial.println("ready (motors disarmed)");
+    Serial.println("cmds: a=arm  s=stop  b=stab on/off  m<0-4>=motor  t<0-100>=throttle %");
 }
 
 void loop()
 {
-    pad.update();
-
-    static uint32_t lastBeat = 0;
-    if (millis() - lastBeat > 2000)
-    {
-        lastBeat = millis();
-        Serial.println("alive");
-    }
-
-    ControllerPtr ctl = pad.get(0);
-    if (ctl && ctl->isConnected() && ctl->hasData())
-        Serial.printf("LX:%d LY:%d RX:%d RY:%d LT:%d RT:%d\n",
-                      ctl->axisX(), ctl->axisY(), ctl->axisRX(), ctl->axisRY(),
-                      ctl->brake(), ctl->throttle());
-
-    delay(10);
+    serialCmds.poll();
+    Status();
+    delay(5);
 }

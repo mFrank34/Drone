@@ -1,4 +1,6 @@
 // attitude.h
+#pragma once
+#include <Arduino.h>
 
 struct Attitude
 {
@@ -10,13 +12,12 @@ struct Correction
     float roll, pitch;
 };
 
-class Attitude
-
+class AttitudePid
 {
+public:
+    Correction update(const Attitude &a, float dt);
+    void reset();
+
 private:
     float iRoll_ = 0, iPitch_ = 0;
-
-public:
-    Correction update(const Attitude &attitude, float dt);
-    void reset();
 };

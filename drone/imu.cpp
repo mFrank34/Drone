@@ -81,3 +81,64 @@ bool Imu::readRaw(float &ax, float &ay, float &az, float &gx, float &gy, float &
     az = v[5] / ACC_LSB_PER_G;
     return true;
 }
+void Imu::accelAngles(float ax, float ay, float az, float &r, float &p)
+{
+    r = atan2f(ay, az) * RAD_TO_DEG;
+    p = atan2f(-ax, sqrtf(ay * ay + az * az)) * RAD_TO_DEG;
+}
+
+bool Imu::calibrate(int n, int tries)
+{
+    for (int t = 0; t < tries; t++)
+    {
+        double sr = 0, sp = 0, sgx = 0, sgy = 0, sgz = 0;
+        bool moved = false;
+        for (int i = 0; i < n; i++)
+        {
+            float ax, ay, az, gx, gy, gz;
+            if (!readRaw(ax, ay, az, gx, gy, gz))
+                return false;
+            if (fabsf(gx) > 10 || fabsf(gy) > 10 || fabsf(gz) > 10)
+                moved = true;
+            float r, p;
+            accelAngles(ax, ay, az, r, p);
+            sr += r;
+            sp += p;
+            sgx += gx;
+            sgy += gy;
+            sgz += gz;
+            delay(10);
+        }
+        _roll0 = sr / n;
+        _pitch0 = sp / n;
+        _gx0 = sgx / n;
+        _gy0 = sgy / n;
+        _gz0 = sgz / n;
+        if (!moved)
+            return true;
+        delay(1000);
+    }
+    return false;
+}
+
+bool Imu::update(float dt)
+{
+    float rax, ray, raz, rgx, rgy, rgz;
+    if (!readRaw(rax, ray, raz, rgx, rgy, rgz))
+        return false;
+
+    gx = (rgx - _gx0) * cfg::GX_SIGN;
+    gy = (rgy - _gy0) * cfg::GY_SIGN;
+    gz = rgz - _gz0;
+    gxf = cfg::GYRO_SMOOTH * gxf + (1 - cfg::GYRO_SMOOTH) * gx;
+    gyf = cfg::GYRO_SMOOTH * gyf + (1 - cfg::GYRO_SMOOTH) * gy;
+
+    float ar, ap;
+    accelAngles(rax, ray, raz, ar, ap);
+    roll = cfg::ALPHA * (roll + gx * dt) + (1 - cfg::ALPHA) * (ar - _roll0);
+    pitch = cfg::ALPHA * (pitch + gy * dt) + (1 - cfg::ALPHA) * (ap - _pitch0);
+    ax = rax;
+    ay = ray;
+    az = raz;
+    return true;
+}

@@ -8,17 +8,17 @@ namespace drone
     public:
         void begin();
         void update();
-        ControllerPtr get(int i) const { return controllers_[i]; }
 
     private:
         void onConnected(ControllerPtr ctl);
         void onDisconnected(ControllerPtr ctl);
+        void applyToCmd(ControllerPtr ctl); // new
 
-        // BP32.setup() needs plain function pointers, so these forward to the instance
         static void onConnectedThunk(ControllerPtr ctl);
         static void onDisconnectedThunk(ControllerPtr ctl);
         static Gamepad *instance_;
 
         ControllerPtr controllers_[BP32_MAX_GAMEPADS] = {};
+        bool prevA_ = false, prevB_ = false, prevY_ = false; // for press detection
     };
 }

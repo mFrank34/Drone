@@ -1,6 +1,8 @@
+// attitude.cpp
 #include "attitude.h"
+#include "shared.h" // cfg::
 
-Correction Attitude::update(const Attitude &attitude, float dt)
+Correction AttitudePid::update(const Attitude &a, float dt)
 {
     const float lim = cfg::I_LIMIT / cfg::KI; // anti-windup clamp
 
@@ -13,8 +15,7 @@ Correction Attitude::update(const Attitude &attitude, float dt)
     return c;
 }
 
-void Attitude::reset()
+void AttitudePid::reset()
 {
-    this->iPitch_ = 0;
-    this->iRoll_ = 0;
+    iRoll_ = iPitch_ = 0;
 }

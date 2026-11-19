@@ -8,8 +8,8 @@ class Motor
 public:
     explicit Motor(uint8_t pin);
 
-    void begin();        // attach PWM and start at zero
-    void write(float v); // 0..1, clamped to cfg::MAX_OUT
+    void begin();        
+    void write(float v); 
     void off();
 
     uint8_t pin() const { return _pin; }

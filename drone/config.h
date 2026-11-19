@@ -18,10 +18,10 @@
 namespace cfg
 {
     /* Motor Pins*/
-    constexpr uint8_t MOTOR_FL = 3; // GPIO3 is a strapping pin on the S3
-    constexpr uint8_t MOTOR_FR = 8; // 8
+    constexpr uint8_t MOTOR_FL = 3; 
+    constexpr uint8_t MOTOR_FR = 8; 
     constexpr uint8_t MOTOR_BL = 6;
-    constexpr uint8_t MOTOR_BR = 11; // 11
+    constexpr uint8_t MOTOR_BR = 11;
 
     /* IC2 MTU Sensor */
     constexpr uint8_t SDA_PIN = 12;

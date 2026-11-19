@@ -10,7 +10,6 @@ enum Corner : uint8_t
     CORNER_COUNT = 4
 };
 
-// The group: owns the four motors and the one copy of the safety state.
 class Quad
 {
 public:
